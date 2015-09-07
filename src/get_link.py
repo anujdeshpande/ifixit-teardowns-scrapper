@@ -3,7 +3,7 @@ from bs4 import BeautifulSoup
 import urllib2, simplejson
 outfile = "allLinks"
 allLinks = []
-for i in range(1,27): 
+for i in range(1,46): 
     response=urllib2.urlopen('https://www.ifixit.com/Teardown?page='+str(i)+'&sort=recent&filter=all')
     print i
     soup = BeautifulSoup(response.read())
