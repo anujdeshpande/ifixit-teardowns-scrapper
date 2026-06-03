@@ -1,0 +1,10 @@
+# Python
+__pycache__/
+*.pyc
+
+# Cloudflare / Wrangler
+.wrangler/
+node_modules/
+
+# Smoke-test output (small ad-hoc runs); real dataset lives in public/parts_all.json
+src/parts.json

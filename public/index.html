@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ChipCensus — which products use which chips</title>
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="favicon.svg">
+<style>
+  :root {
+    --bg:#ffffff; --text:#111111; --muted:#777777; --line:rgba(0,0,0,0.12);
+    --hover:rgba(0,0,0,0.06); --soft:rgba(0,0,0,0.04);
+    --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+    --sans:Helvetica,Geneva,Arial,SunSans-Regular,sans-serif;
+  }
+  * { box-sizing:border-box; }
+  html { -webkit-text-size-adjust:100%; }
+  body { margin:0; background:var(--bg); color:var(--text); font:15px/1.6 var(--sans); }
+  a { color:inherit; }
+  .wrap { max-width:980px; margin:0 auto; padding:0 1rem; }
+
+  header { padding:2.4rem 1rem 1.4rem; text-align:center; }
+  h1 { margin:0; font-size:30px; letter-spacing:-0.01em; }
+  h1 .dot { color:var(--muted); }
+  .tagline { color:var(--muted); margin-top:.35rem; font-size:15px; }
+
+  /* About */
+  .about { border:1px solid var(--line); border-radius:12px; padding:1.1rem 1.3rem;
+    margin:1rem auto 1.6rem; background:var(--soft); text-align:left; }
+  .about p { margin:.4rem 0; }
+  .about p:first-child { margin-top:0; }
+  .about .lead { font-size:15px; }
+  .about ul { margin:.5rem 0 0; padding-left:1.1rem; color:var(--muted); font-size:13.5px; }
+  .about li { margin:.15rem 0; }
+  .about .note { color:var(--muted); font-size:12.5px; margin-top:.7rem; }
+  .stats { text-align:center; color:var(--muted); font-size:14px; margin:.2rem 0 1.4rem; }
+  .stats b { color:var(--text); font-variant-numeric:tabular-nums; }
+
+  /* Controls */
+  .controls { display:flex; flex-wrap:wrap; gap:.6rem; align-items:center;
+    position:sticky; top:0; background:var(--bg); padding:.7rem 0; z-index:5;
+    border-bottom:1px solid var(--line); }
+  input[type=search], select { font:14px var(--sans); color:var(--text); background:#fff;
+    border:1px solid var(--line); border-radius:8px; padding:.5rem .7rem; }
+  input[type=search] { flex:1; min-width:200px; }
+  input[type=search]:focus, select:focus { outline:none; border-color:#111; }
+  label.chk { color:var(--muted); display:flex; align-items:center; gap:.35rem; font-size:13.5px; cursor:pointer; }
+
+  /* Table */
+  table { width:100%; border-collapse:collapse; margin-top:.3rem; }
+  th,td { text-align:left; padding:.6rem .7rem; border-bottom:1px solid var(--line); vertical-align:top; }
+  th { color:var(--muted); font-weight:600; font-size:11.5px; text-transform:uppercase;
+    letter-spacing:.05em; cursor:pointer; user-select:none; white-space:nowrap; }
+  th.sorted { color:var(--text); }
+  th.sorted::after { content:" ↓"; }
+  th.asc.sorted::after { content:" ↑"; }
+  tr.chip { cursor:pointer; }
+  tr.chip:hover { background:var(--hover); }
+  .count { font-variant-numeric:tabular-nums; font-weight:700; }
+  .mpn { font-family:var(--mono); font-size:13.5px; }
+  .nomfr { color:var(--muted); }
+  .conf { font-size:11px; padding:.1rem .5rem; border:1px solid var(--line); border-radius:20px; color:var(--muted); }
+  .conf.high { color:var(--text); border-color:#111; }
+  .conf.low { opacity:.6; }
+
+  .detail td { background:var(--soft); }
+  .detail .inner { padding:.3rem .2rem .5rem 1.6rem; }
+  .td-row { display:flex; gap:.6rem; align-items:baseline; padding:.4rem 0; border-bottom:1px solid var(--line); }
+  .td-row:last-child { border-bottom:0; }
+  .dot { width:9px; height:9px; border-radius:50%; flex:none; margin-top:7px; border:1px solid rgba(0,0,0,.25); }
+  .td-row a { font-weight:600; text-decoration:none; border-bottom:1px solid var(--muted); }
+  .td-row a:hover { border-bottom-color:#111; }
+  .ctx { color:var(--muted); font-size:12.5px; }
+  .empty { color:var(--muted); padding:3rem; text-align:center; }
+  footer { color:var(--muted); font-size:12px; text-align:center; padding:2rem 1rem 3rem; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>ChipCensus</h1>
+    <div class="tagline">which products use which chips</div>
+  </header>
+
+  <section class="about">
+    <p class="lead">ChipCensus is an index of the integrated circuits found inside consumer
+    electronics. It answers two questions hardware folks actually ask: <em>which devices use a
+    given chip</em>, and <em>which chips show up again and again</em> across the industry.</p>
+    <ul>
+      <li>Source: staff-authored teardowns on <a href="https://www.ifixit.com/Teardown" target="_blank" rel="noopener">iFixit</a> (filtered for quality); ChipCensus is an independent project, not affiliated with iFixit.</li>
+      <li>Best-effort automated extraction — manufacturer attribution can be imperfect, and older teardowns list far more silicon than newer video-based ones.</li>
+    </ul>
+    <p class="note" id="about-stats"></p>
+    <p class="note">Issues or complaints? <a href="mailto:anuj@embedhub.com">anuj@embedhub.com</a></p>
+  </section>
+
+  <div class="controls">
+    <input type="search" id="q" placeholder="Search chip, part number, or manufacturer…">
+    <select id="mfr"><option value="">All manufacturers</option></select>
+    <label class="chk"><input type="checkbox" id="highonly"> high-confidence only</label>
+    <label class="chk"><input type="checkbox" id="shared"> shared (≥2 devices)</label>
+  </div>
+
+  <div class="stats" id="stats">loading…</div>
+
+  <table id="tbl">
+    <thead><tr>
+      <th data-k="count" class="sorted">Devices</th>
+      <th data-k="mfr">Manufacturer</th>
+      <th data-k="part">Part number</th>
+      <th data-k="conf">Confidence</th>
+    </tr></thead>
+    <tbody id="rows"></tbody>
+  </table>
+  <div class="empty" id="empty" hidden>No chips match your filters.</div>
+
+  <footer>ChipCensus · built from public teardowns · data © respective sources</footer>
+</div>
+
+<script>
+const COLORS = { red:'#d64541', orange:'#e08a3c', yellow:'#d4b53c', green:'#3fa45b',
+  light_blue:'#5aa9cf', blue:'#3f72c4', violet:'#8a5fc0', purple:'#8a5fc0', black:'#444' };
+const CONF_RANK = { high:0, medium:1, low:2 };
+
+let chips = [];
+let sortKey = 'count', sortDir = -1;
+
+function aggregate(parts) {
+  const map = new Map();
+  for (const p of parts) {
+    const key = (p.manufacturer ? p.manufacturer + ' ' : '') + p.part_number;
+    let c = map.get(key);
+    if (!c) { c = { key, mfr:p.manufacturer||'', part:p.part_number, guides:new Set(),
+      conf:p.confidence, rows:[] }; map.set(key, c); }
+    c.guides.add(p.guideid);
+    c.rows.push(p);
+    if (CONF_RANK[p.confidence] < CONF_RANK[c.conf]) c.conf = p.confidence;
+  }
+  return [...map.values()].map(c => ({ ...c, count:c.guides.size }));
+}
+
+function render() {
+  const q = document.getElementById('q').value.trim().toLowerCase();
+  const mfrSel = document.getElementById('mfr').value;
+  const highOnly = document.getElementById('highonly').checked;
+  const sharedOnly = document.getElementById('shared').checked;
+
+  let list = chips.filter(c => {
+    if (mfrSel && c.mfr !== mfrSel) return false;
+    if (highOnly && c.conf !== 'high') return false;
+    if (sharedOnly && c.count < 2) return false;
+    if (q && !c.key.toLowerCase().includes(q)) return false;
+    return true;
+  });
+
+  list.sort((a,b) => {
+    let v;
+    if (sortKey === 'count') v = a.count - b.count;
+    else if (sortKey === 'conf') v = CONF_RANK[a.conf] - CONF_RANK[b.conf];
+    else v = String(a[sortKey] || '~').localeCompare(String(b[sortKey] || '~'));
+    return v * sortDir || a.key.localeCompare(b.key);
+  });
+
+  const rows = document.getElementById('rows');
+  rows.innerHTML = '';
+  const frag = document.createDocumentFragment();
+  for (const c of list.slice(0, 1500)) {
+    const tr = document.createElement('tr');
+    tr.className = 'chip';
+    tr.innerHTML = `<td class="count">${c.count}</td>
+      <td>${c.mfr ? esc(c.mfr) : '<span class=nomfr>—</span>'}</td>
+      <td class="mpn">${esc(c.part)}</td>
+      <td><span class="conf ${c.conf}">${c.conf}</span></td>`;
+    tr.onclick = () => toggle(tr, c);
+    frag.appendChild(tr);
+  }
+  rows.appendChild(frag);
+  document.getElementById('empty').hidden = list.length > 0;
+  document.querySelectorAll('th').forEach(th => {
+    th.classList.toggle('sorted', th.dataset.k === sortKey);
+    th.classList.toggle('asc', th.dataset.k === sortKey && sortDir === 1);
+  });
+}
+
+function toggle(tr, c) {
+  if (tr.nextSibling && tr.nextSibling.classList?.contains('detail')) {
+    tr.nextSibling.remove(); return;
+  }
+  const seen = new Set();
+  const items = c.rows.filter(r => !seen.has(r.guideid) && seen.add(r.guideid))
+    .sort((a,b) => a.title.localeCompare(b.title));
+  const html = items.map(r => `
+    <div class="td-row">
+      <span class="dot" style="background:${COLORS[r.bullet]||'#999'}" title="${r.bullet}"></span>
+      <div><a href="https://www.ifixit.com/Teardown/x/${r.guideid}" target="_blank" rel="noopener">${esc(r.title)}</a>
+      <div class="ctx">${esc(r.context||'')}</div></div>
+    </div>`).join('');
+  const d = document.createElement('tr');
+  d.className = 'detail';
+  d.innerHTML = `<td colspan="4"><div class="inner">${html}</div></td>`;
+  tr.after(d);
+}
+
+function esc(s){ return String(s).replace(/[&<>"]/g, m =>
+  ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m])); }
+
+document.querySelectorAll('th').forEach(th => th.onclick = () => {
+  const k = th.dataset.k;
+  if (sortKey === k) sortDir *= -1;
+  else { sortKey = k; sortDir = (k === 'count') ? -1 : 1; }
+  render();
+});
+['q','mfr','highonly','shared'].forEach(id =>
+  document.getElementById(id).addEventListener('input', render));
+
+fetch('parts_all.json').then(r => {
+  if (!r.ok) throw new Error(r.status);
+  return r.json();
+}).then(parts => {
+  chips = aggregate(parts);
+  const teardowns = new Set(parts.map(p => p.guideid)).size;
+  const mfrs = [...new Set(parts.map(p => p.manufacturer).filter(Boolean))].sort();
+  const sel = document.getElementById('mfr');
+  for (const m of mfrs) sel.add(new Option(m, m));
+  document.getElementById('stats').innerHTML =
+    `<b>${chips.length.toLocaleString()}</b> distinct chips · ` +
+    `<b>${parts.length.toLocaleString()}</b> extractions · ` +
+    `<b>${teardowns}</b> devices · <b>${mfrs.length}</b> manufacturers`;
+  document.getElementById('about-stats').textContent =
+    `Currently indexing ${chips.length.toLocaleString()} distinct chips across ` +
+    `${teardowns} device teardowns from ${mfrs.length} manufacturers.`;
+  render();
+}).catch(e => {
+  document.getElementById('stats').innerHTML =
+    `Couldn't load parts_all.json (${e.message}). Serve this folder with ` +
+    `<code>python3 -m http.server</code>, then open <code>http://localhost:8000/</code>`;
+});
+</script>
+</body>
+</html>

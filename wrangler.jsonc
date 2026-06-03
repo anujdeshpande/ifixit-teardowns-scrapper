@@ -1,0 +1,17 @@
+{
+  // ChipCensus — static-asset-only Cloudflare Worker.
+  // No `main` script: with only an `assets` directory, Wrangler deploys a
+  // Worker that serves the static files directly from Cloudflare's edge.
+  // Deploy:  npx wrangler deploy      Local dev:  npx wrangler dev
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "chipcensus",
+  "compatibility_date": "2026-06-02",
+  "assets": {
+    "directory": "./public"
+  },
+  // Custom domain: Wrangler auto-creates the DNS record + TLS cert, provided
+  // the anujdeshpande.com zone is on this same Cloudflare account.
+  "routes": [
+    { "pattern": "chipcensus.anujdeshpande.com", "custom_domain": true }
+  ]
+}

@@ -1,0 +1,9 @@
+# Cache rules for Cloudflare static assets.
+# Data file: let the browser cache briefly but always revalidate, so a fresh
+# pipeline run shows up without a hard refresh.
+/parts_all.json
+  Cache-Control: public, max-age=300, stale-while-revalidate=86400
+
+# HTML: short cache, revalidate often.
+/index.html
+  Cache-Control: public, max-age=60
